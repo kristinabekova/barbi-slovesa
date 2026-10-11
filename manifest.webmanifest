@@ -1,0 +1,9 @@
+{
+  "name": "Barbi – nepravidelné slovesá",
+  "short_name": "Slovesá",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fdeaf6",
+  "theme_color": "#7c4dff",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
