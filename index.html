@@ -77,6 +77,14 @@
   .chart div { flex: 1; border-radius: 6px 6px 0 0; min-height: 4px; position: relative; }
   .chart div span { position: absolute; top: -18px; width: 100%; text-align: center; font-size: .72rem; color: var(--muted); }
   .tag { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: .8rem; color: #fff; }
+  .word { display: flex; gap: 4px; margin: 4px 0 2px; }
+  .word .lt { flex: 1 1 0; min-width: 0; max-width: 38px; height: 48px; text-align: center; font-size: 1.45rem; font-weight: bold; border-radius: 10px; padding: 0; font-family: 'Courier New', monospace; }
+  .word input.lt { border: 2px solid var(--line); background: #fff; color: var(--text); width: auto; }
+  .word input.lt:focus { border-color: var(--purple); background: #f6f0ff; }
+  .word input.lt.bad { border-color: var(--warn); background: #fffbeb; }
+  .word .fixed { display: flex; align-items: center; justify-content: center; background: #ece4ff; color: var(--purple); }
+  .word .fixed.done { background: #dcfce7; color: var(--good); }
+  .word .gap { flex: 0 0 12px; }
   .menu.two { grid-template-columns: 1fr 1fr; }
   .menu.two button { padding: 28px 8px; font-size: 1.35rem; }
   .menu.two button small { display: block; font-size: .8rem; font-weight: normal; color: var(--muted); margin-top: 4px; }
@@ -520,17 +528,16 @@ function practice(verbs) {
     const p = store.v[v.base], box = p ? p.box : 0;
     const frac = extra[v.base] !== undefined ? extra[v.base] : (box >= 4 ? 0 : box >= 2 ? 0.25 : 0.5);
     const fields = [["základný tvar", v.base], ["2. tvar (minulý čas)", v.past], ["3. tvar (príčastie)", v.pp]]
-      .map(([label, form]) => ({ label, form, word: alts(form)[0], locked: false }));
+      .map(([label, form]) => ({ label, form, word: alts(form)[0], locked: false, vals: {} }));
     fields.forEach(f => f.rev = initReveal(f.word, frac));
-    let revealed = false, solved = false;
+    let revealed = false;
 
     const d = render(`
       <div class="progress"><i style="width:${done / total * 100}%"></i></div>
       <div class="card center">
-        <div class="muted">Doplň tri tvary slovesa</div>
+        <div class="muted">Doplň písmená do troch tvarov slovesa</div>
         <div class="big" style="margin:4px 0 6px">${v.sk}</div>
-        ${fields.map((f, k) => `<div class="fld"><label>${f.label}</label><div class="mask" id="mk${k}"></div>
-          <input type="text" id="in${k}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="napíš celé slovo"></div>`).join("")}
+        ${fields.map((f, k) => `<div class="fld"><label>${f.label}</label><div class="word" id="w${k}"></div></div>`).join("")}
         <div class="hint" id="msg"></div>
         <div class="row" style="margin-bottom:10px"><button class="btn" id="chk">Skontrolovať</button><button class="btn ghost" id="help">💡 Pomôž mi</button></div>
         <div class="row"><button class="btn ghost" id="trk">🧠 Trik</button><button class="btn ghost" id="show">👀 Ukáž riešenie</button></div>
@@ -538,9 +545,43 @@ function practice(verbs) {
         <p><button class="btn alt" id="nx" style="display:none">Ďalej ▶</button></p>
       </div>`, home);
     const msg = d.querySelector("#msg");
-    const draw = () => fields.forEach((f, k) => { d.querySelector("#mk" + k).textContent = f.locked ? showForm(f.form) : maskText(f.word, f.rev); });
-    draw();
-    d.querySelector("#in0").focus();
+
+    // posun medzi prázdnymi políčkami cez všetky tri slová
+    const focusNext = (k, i, dir, clear) => {
+      const all = [...d.querySelectorAll("input.lt")];
+      const idx = all.findIndex(x => +x.dataset.f === k && +x.dataset.i === i);
+      const t = all[idx + dir];
+      if (!t) return;
+      t.focus(); t.select();
+      if (clear) { t.value = ""; fields[+t.dataset.f].vals[+t.dataset.i] = ""; t.classList.remove("bad"); }
+    };
+    const draw = () => fields.forEach((f, k) => {
+      const wrap = d.querySelector("#w" + k); wrap.innerHTML = "";
+      [...f.word].forEach((ch, i) => {
+        if (ch === " ") { const g = document.createElement("span"); g.className = "gap"; wrap.appendChild(g); return; }
+        if (f.locked || f.rev.has(i)) {
+          const s = document.createElement("span");
+          s.className = "lt fixed" + (f.locked ? " done" : ""); s.textContent = ch; wrap.appendChild(s); return;
+        }
+        const inp = document.createElement("input");
+        inp.className = "lt"; inp.maxLength = 1; inp.value = f.vals[i] || "";
+        inp.setAttribute("autocomplete", "off"); inp.setAttribute("autocapitalize", "off"); inp.setAttribute("autocorrect", "off"); inp.spellcheck = false;
+        inp.dataset.f = k; inp.dataset.i = i;
+        inp.oninput = () => {
+          const val = inp.value.slice(-1).toLowerCase(); inp.value = val; f.vals[i] = val; inp.classList.remove("bad");
+          if (val) focusNext(k, i, 1);
+        };
+        inp.onfocus = () => inp.select();
+        inp.onkeydown = e => {
+          if (e.key === "Enter") { e.preventDefault(); check(); }
+          else if (e.key === "Backspace" && !inp.value) { e.preventDefault(); focusNext(k, i, -1, true); }
+          else if (e.key === "ArrowLeft") { e.preventDefault(); focusNext(k, i, -1); }
+          else if (e.key === "ArrowRight") { e.preventDefault(); focusNext(k, i, 1); }
+        };
+        wrap.appendChild(inp);
+      });
+    });
+    const focusFirst = () => { const f = d.querySelector("input.lt"); if (f) f.focus(); };
     const showTip = () => { d.querySelector("#tip").innerHTML = TIPS[v.base] ? `<div class="tip">🧠 <b>Trik:</b> ${TIPS[v.base]}</div>` : ""; };
     const finishCard = text => {
       msg.textContent = text; showTip();
@@ -549,37 +590,48 @@ function practice(verbs) {
       say(v.past);
     };
     const check = () => {
-      let wrong = 0;
-      fields.forEach((f, k) => {
+      let wrong = 0, empty = 0;
+      fields.forEach(f => {
         if (f.locked) return;
-        const inp = d.querySelector("#in" + k), val = inp.value.trim();
-        if (!val) { wrong++; return; }
-        if (accepts(val, f.form)) { f.locked = true; inp.value = showForm(f.form); inp.disabled = true; inp.className = "ok"; }
-        else { wrong++; inp.className = "try"; }
+        let ok = true;
+        [...f.word].forEach((ch, i) => {
+          if (ch === " " || f.rev.has(i)) return;
+          const val = f.vals[i] || "";
+          if (!val) empty++;
+          if (val !== ch) ok = false;
+        });
+        if (ok) f.locked = true; else wrong++;
       });
       draw();
-      if (!wrong) { solved = true; finishCard("Super! 🌟 Zvládla si to."); }
-      else msg.textContent = "Skoro! Skús ešte raz alebo si vypýtaj nápovedu 💡";
+      if (!wrong) { finishCard("Super! 🌟 Zvládla si to."); return; }
+      // zlé písmená sa označia oranžovo, správne tvary sa zamknú zelenou
+      fields.forEach((f, k) => {
+        if (f.locked) return;
+        d.querySelectorAll("#w" + k + " input.lt").forEach(inp => {
+          const val = f.vals[+inp.dataset.i] || "";
+          if (val && val !== f.word[+inp.dataset.i]) inp.classList.add("bad");
+        });
+      });
+      msg.textContent = empty ? "Doplň všetky políčka 😊" : "Skoro! Oranžové písmená oprav alebo si vypýtaj nápovedu 💡";
+      const firstBad = d.querySelector("input.lt.bad") || d.querySelector("input.lt");
+      if (firstBad) firstBad.focus();
     };
     d.querySelector("#chk").onclick = check;
-    fields.forEach((f, k) => d.querySelector("#in" + k).onkeydown = e => {
-      if (e.key !== "Enter") return;
-      const nxt = d.querySelector("#in" + (k + 1)); if (nxt && !nxt.disabled) nxt.focus(); else check();
-    });
     d.querySelector("#help").onclick = () => {
       let any = false;
       fields.forEach(f => {
         if (f.locked) return;
         const hid = [...f.word].map((ch, i) => i).filter(i => f.word[i] !== " " && !f.rev.has(i));
-        if (hid.length) { f.rev.add(hid[Math.floor(Math.random() * hid.length)]); any = true; }
+        if (hid.length) { const i = hid[Math.floor(Math.random() * hid.length)]; f.rev.add(i); delete f.vals[i]; any = true; }
       });
       draw();
-      msg.textContent = any ? "Pridali sme ti jedno písmeno ku každému slovu." : "Už vidíš všetky písmená, skús ich napísať celé.";
+      msg.textContent = any ? "Pridali sme ti jedno písmeno ku každému slovu." : "Už vidíš všetky písmená.";
+      focusFirst();
     };
     d.querySelector("#trk").onclick = showTip;
     d.querySelector("#show").onclick = () => {
       revealed = true;
-      fields.forEach((f, k) => { f.locked = true; const inp = d.querySelector("#in" + k); inp.value = showForm(f.form); inp.disabled = true; });
+      fields.forEach(f => { f.locked = true; });
       draw();
       finishCard("Nevadí, pozri si to a skús si to zapamätať. Ku slovu sa ešte vrátime 😊");
     };
@@ -588,6 +640,7 @@ function practice(verbs) {
       else { queue.shift(); done++; }
       next();
     };
+    draw(); focusFirst();
   };
   next();
 }
