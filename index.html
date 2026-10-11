@@ -77,6 +77,17 @@
   .chart div { flex: 1; border-radius: 6px 6px 0 0; min-height: 4px; position: relative; }
   .chart div span { position: absolute; top: -18px; width: 100%; text-align: center; font-size: .72rem; color: var(--muted); }
   .tag { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: .8rem; color: #fff; }
+  .menu.two { grid-template-columns: 1fr 1fr; }
+  .menu.two button { padding: 28px 8px; font-size: 1.35rem; }
+  .menu.two button small { display: block; font-size: .8rem; font-weight: normal; color: var(--muted); margin-top: 4px; }
+  .fld { text-align: left; margin: 14px 0; }
+  .fld label { font-size: .85rem; color: var(--muted); display: block; }
+  .mask { font-family: "Courier New", monospace; font-size: 1.7rem; font-weight: bold; letter-spacing: .1em; color: var(--purple); margin: 2px 0 6px; word-break: break-all; }
+  .fld input.ok { border-color: var(--good); background: #f0fdf4; }
+  .fld input.try { border-color: var(--warn); background: #fffbeb; }
+  .tip { background: #fff8e1; border-radius: 14px; padding: 12px 14px; margin: 12px 0; text-align: left; line-height: 1.5; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chip { background: #f6f0ff; border-radius: 12px; padding: 6px 10px; font-size: .95rem; }
   .hint { min-height: 1.4rem; margin: 10px 0 4px; font-size: 1.2rem; font-weight: bold; color: var(--purple); letter-spacing: .08em; }
   .choice.gone { opacity: .2; pointer-events: none; text-decoration: line-through; }
   details.card summary { cursor: pointer; font-weight: bold; list-style: none; }
@@ -300,7 +311,7 @@ function home() {
   const avg = last.length ? Math.round(last.reduce((s, t) => s + t.pct, 0) / last.length) : null;
   const weak = VERBS.filter(v => { const p = store.v[v.base]; return p && p.bad && p.box <= 1; }).length;
   const d = render(`
-    <p style="font-size:1.25rem;margin:4px 0 12px">Ahoj Barbi! 💖 ${store.tests.length ? "Poďme pokračovať." : "Začni kartami alebo rovno skús prvý test."}</p>
+    <p style="font-size:1.25rem;margin:4px 0 12px">Ahoj Barbi! 💖 ${store.tests.length ? "Poďme pokračovať." : "Najprv sa v pokoji poučíš, potom si môžeš skúsiť test."}</p>
     <div class="card">
       <div class="row">
         <div class="stat"><b>${c.mastered}<small style="font-size:1rem;color:var(--muted)"> / ${VERBS.length}</small></b><span>zvládnuté slovesá</span></div>
@@ -309,14 +320,16 @@ function home() {
       </div>
       <div style="margin-top:14px">${barHtml(c)}${LEGEND}</div>
     </div>
-    <div class="menu">
-      <button id="m-learn"><span>🃏</span>Učiť sa (karty)</button>
-      <button id="m-test"><span>📝</span>Test</button>
-      <button id="m-prog"><span>📈</span>Môj postup</button>
-      <button id="m-list"><span>📋</span>Zoznam slovies</button>
-      <button id="m-hist"><span>🕘</span>História testov</button>
+    <div class="menu two">
+      <button id="m-learn"><span>🧠</span>Učenie<small>opakovanie bez tlaku</small></button>
+      <button id="m-test"><span>📝</span>Testy<small>15 otázok a známka</small></button>
     </div>
-    ${weak ? `<div class="card center"><p>Máš ${weak} slovies, ktoré ti robia problémy.</p><button class="btn alt" id="m-weak">Precvičiť slabé slovesá</button></div>` : ""}
+    <div class="center" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn ghost" id="m-prog" style="padding:8px 14px;font-size:.9rem">📈 Môj postup</button>
+      <button class="btn ghost" id="m-list" style="padding:8px 14px;font-size:.9rem">📋 Zoznam slovies</button>
+      <button class="btn ghost" id="m-hist" style="padding:8px 14px;font-size:.9rem">🕘 História testov</button>
+    </div>
+    ${weak ? `<div class="card center"><p>Máš ${weak} slovies, ktoré ti robia problémy.</p><button class="btn alt" id="m-weak">Precvičiť slabé slovesá v teste</button></div>` : ""}
   `);
   d.querySelector("#m-learn").onclick = learnMenu;
   d.querySelector("#m-test").onclick = testMenu;
@@ -346,17 +359,240 @@ function listView() {
   draw("");
 }
 
-// ================= KARTY =================
+// ================= UČENIE =================
+// Triky na zapamätanie pre jednotlivé slovesá
+const TIPS = {
+  be: "Najpodivnejšie sloveso! Jednotné číslo: I WAS, množné: we WERE. Tretí tvar BEEN čítaj „bín“.",
+  become: "Je to come s „be“ pred: be+come. Mení sa len 2. tvar: become – BECAME – become (ako come – came – come).",
+  begin: "Skupina I – A – U: begIn – begAn – begUn. Rovnako ako sing, drink, swim.",
+  bite: "bite – bit – bitten. Rýmuje sa s kitten: mačiatko (kitten) hryzie (bitten).",
+  break: "bReak – bRoke – bRoken. Rovnaký vzor ako speak, steal, choose, wake.",
+  bring: "Skupina -OUGHT: bring – brought – brought. Vyslovuje sa „brót“. Rovnako buy, think, fight, teach.",
+  build: "Končí na D → v minulosti sa D zmení na T: build – built – built. Ako send – sent, spend – spent.",
+  burn: "Pridaj T: burn – burnt – burnt. (Povolené je aj burned.) Horí to: hot → T.",
+  buy: "buy – bought – bought. Skupina -OUGHT: buy, bring, think, fight, teach. Kupujem OUGHT…",
+  can: "can – could – been able to. Tretí tvar nemá vlastné slovo, použijeme „been able to“ = byť schopný.",
+  catch: "catch – caught – caught. Skupina -AUGHT, vyslovuje sa „kót“. Rýmuje sa s taught.",
+  come: "come – CAME – come. Základný a tretí tvar sú rovnaké, mení sa len stredný. Ako become, run.",
+  cost: "cost – cost – cost. Cena sa nemení, ostáva vždy rovnaká!",
+  cut: "cut – cut – cut. Nožnice strihajú stále rovnako, nič sa nemení.",
+  dig: "dig – dug – dug. I → U. Vymysli si: kopem lopatou (dug), lopata je vždy rovnaká. Ako stick – stuck.",
+  do: "do – did – done. Done = hotovo! Tretí tvar si spoj s „hotovo“.",
+  draw: "draw – drew – drawn. Vzor: -ew a -wn ako know – knew – known, grow – grew – grown.",
+  drink: "Skupina I – A – U: drInk – drAnk – drUnk. Ako sing, swim, begin, ring, sink.",
+  drive: "drive – drove – driven. Ako ride – rode – ridden: I → O → I+en.",
+  eat: "eat – ate – eaten. ATE čítaj „ejt“. Zjedla som (ate), zjedené (eaten).",
+  fall: "fall – fell – fallen. A → E → A+en. Spadla som (fell) a už je to spadnuté (fallen).",
+  feel: "feel – felt – felt. Dvojité EE sa skráti na E a pridá sa T. Ako keep – kept, sleep – slept.",
+  fight: "fight – fought – fought. Skupina -OUGHT (čítaj „fót“).",
+  find: "find – found – found. I → OU. Nájdený poklad = found.",
+  fly: "fly – flew – flown. Vzor -ew / -own: fly, know, grow, throw. Lietadlo FLEW a FLOWN.",
+  forget: "for+get: forget – forgot – forgotten. Podobne get – got – got, ale forgotten má ešte -en.",
+  get: "get – got – got. E → O a tretí tvar je rovnaký ako druhý. (V americkej angličtine aj gotten.)",
+  give: "give – gave – given. I → A → I+en. Ako take – took – taken.",
+  go: "go – WENT – gone. Úplne iné slovo, musíš sa ho naučiť naspamäť. Went = vypadla som von. Gone = preč, odišlo.",
+  grow: "grow – grew – grown. Vzor -ew / -own ako know, throw, fly.",
+  have: "have – had – had. Z „ve“ sa stane „d“. Veľmi jednoduché!",
+  hear: "V slove hEAR je EAR = ucho! Počuješ ušami. Heard – čítaj „hérd“.",
+  hide: "hide – hid – hidden. Skrytý (hidden) poklad. Ako bite – bit – bitten: pridá sa -den.",
+  hit: "hit – hit – hit. Úder je stále rovnaký.",
+  hold: "hold – held – held. O → E. Držím (hold), držala (held).",
+  hurt: "hurt – hurt – hurt. Bolesť sa nemení.",
+  keep: "keep – kept – kept. EE → E + T. Ako sleep – slept, feel – felt.",
+  know: "know – knew – known. Vzor -ew / -own. K sa nevyslovuje.",
+  learn: "learn – learnt – learnt (povolené aj learned). Pridáš T.",
+  leave: "leave – left – left. LEFT je aj ľavá strana. Odišla som doľava.",
+  lie: "lie – lay – lain. Pozor, nezamieňaj s lay! Ležím na LAIN-e (lain rýmuje s plain).",
+  lose: "lose – lost – lost. Stratila som, je to LOST (stratené).",
+  make: "make – made – made. K sa zmení na D.",
+  mean: "mean – meant – meant. Pridáš T a skrátíš ea: čítaj „ment“.",
+  meet: "meet – met – met. EE → E, nič iné sa nemení.",
+  pay: "pay – paid – paid. Y sa zmení na ID.",
+  put: "put – put – put. Nič sa nemení.",
+  read: "read – read – read. Píše sa rovnako, ale vyslovuje sa inak! Základný „ríd“, 2. a 3. tvar „red“ (ako červená).",
+  ride: "ride – rode – ridden. Ako drive – drove – driven a write – wrote – written.",
+  ring: "Skupina I – A – U: rIng – rAng – rUng. Ako sing.",
+  run: "run – RAN – run. Základný a tretí tvar sú rovnaké. Beh: run, ran, run.",
+  say: "say – said – said. SAID čítaj „sed“.",
+  see: "see – saw – seen. SAW je aj pílka! Videla som pílku (saw).",
+  sell: "sell – sold – sold. E → O. Vypredané = sold out.",
+  send: "send – sent – sent. D → T. Ako build – built, spend – spent.",
+  set: "set – set – set. Nič sa nemení.",
+  sing: "Skupina I – A – U: sIng – sAng – sUng. Najznámejší príklad!",
+  sink: "Skupina I – A – U: sInk – sAnk – sUnk. Ako drink.",
+  sit: "sit – sat – sat. I → A a 3. tvar je rovnaký ako druhý.",
+  sleep: "sleep – slept – slept. EE → E + T. Ako keep – kept.",
+  smell: "smell – smelt – smelt (povolené aj smelled). Pridáš T.",
+  speak: "sp-E-ak – sp-O-ke – sp-O-ken. Ako break – broke – broken, steal – stole – stolen.",
+  spell: "spell – spelt – spelt (povolené aj spelled). Pridáš T.",
+  spend: "spend – spent – spent. D → T. Ako send, build.",
+  stand: "stand – stood – stood. A → OO. Postavila som sa: stood, čítaj „stúd“.",
+  steal: "steal – stole – stolen. Ako speak – spoke – spoken. Ukradnuté = stolen.",
+  stick: "stick – stuck – stuck. I → U. Prilepené na stuck. Ako dig – dug.",
+  sweep: "sweep – swept – swept. EE → E + T. Ako sleep – slept.",
+  swim: "Skupina I – A – U: swIm – swAm – swUm.",
+  take: "take – took – taken. Ako give – gave – given, shake – shook – shaken.",
+  teach: "teach – taught – taught. Skupina -AUGHT (čítaj „tót“). Rýmuje sa s caught.",
+  tear: "tear – tore – torn. Ako wear – wore – worn. Roztrhnuté = torn.",
+  tell: "tell – told – told. E → O. Ako sell – sold – sold.",
+  think: "think – thought – thought. Skupina -OUGHT („tót“): think, bring, buy, fight.",
+  throw: "throw – threw – thrown. Vzor -ew / -own ako know, grow, fly.",
+  understand: "under + stand: rovnaký vzor ako stand – stood – stood. Understand – understood – understood.",
+  wake: "w-A-ke – w-O-ke – w-O-ken. Ako speak – spoke – spoken, break – broke – broken.",
+  wear: "wear – wore – worn. Ako tear – tore – torn. Nosím oblečenie – worn = ponosené.",
+  win: "win – won – won. I → O. Čítaj won ako „van“. Vyhrala som!",
+  write: "write – wrote – written. Ako ride – rode – ridden. Pozor na dvojité T v written!",
+  choose: "choose – chose – chosen. Základný tvar má dve O, 2. tvar len jedno. Tretí má -en.",
+};
+// Skupiny podľa vzoru
+const GROUPS = [
+  ["Nič sa nemení", "Všetky tri tvary sú rovnaké. Stačí sa naučiť len jedno slovo! (Pozor: read sa v 2. a 3. tvare vyslovuje inak, „red“.)", ["cost", "cut", "hit", "hurt", "put", "set", "read"]],
+  ["I – A – U", "Samohláska sa mení v poradí I → A → U. Zapamätaj si pieseň: sIng – sAng – sUng.", ["begin", "drink", "ring", "sing", "sink", "swim"]],
+  ["-OUGHT / -AUGHT (čítaj „ót“)", "2. a 3. tvar sú rovnaké a končia na -ought alebo -aught. Zapamätaj si vetu: „I BOUGHT and BROUGHT what I THOUGHT, but I FOUGHT and was CAUGHT, and TAUGHT a lesson.“", ["bring", "buy", "think", "fight", "catch", "teach"]],
+  ["Skrátenie + T", "Dlhé „ee“ sa skráti a pridá sa T. Spí – spal, drží – držala: sleep – slept, keep – kept.", ["sleep", "keep", "feel", "sweep", "mean", "leave", "meet"]],
+  ["D → T a podobné zmeny koncovky", "Koncové D sa zmení na T. Pridá sa T k slovám, ktoré inak nemeníš.", ["build", "send", "spend", "burn", "learn", "smell", "spell", "lose", "make", "have", "pay", "say", "hear"]],
+  ["-ew a -own", "2. tvar končí na -ew a 3. tvar na -own alebo -awn. Reklama: „I KNEW what he had THROWN and what had GROWN.“", ["know", "grow", "throw", "fly", "draw"]],
+  ["Ako speak – spoke – spoken", "2. tvar má O a E na konci (spoke), 3. tvar pridá -N. Všetky tri sa rýmujú: broke – woke – spoke – stole – chose.", ["speak", "break", "steal", "wake", "choose", "wear", "tear"]],
+  ["Ako ride – rode – ridden", "I → O → I+en (-den alebo -ten). Zapamätaj: ridden, hidden, bitten, written, driven.", ["ride", "drive", "write", "hide", "bite"]],
+  ["Pridá sa -EN na konci", "3. tvar končí na -en alebo -n: eaten, fallen, given, taken, seen, forgotten.", ["eat", "fall", "give", "take", "see", "forget", "do"]],
+  ["Základný = 3. tvar", "Základný a tretí tvar sú rovnaké, mení sa len stredný: come – came – come, become – became – become, run – ran – run.", ["come", "become", "run"]],
+  ["Ďalšie podobné dvojice", "E → O: sell – sold, tell – told. I → O: win – won. I → A: sit – sat. O → E: hold – held. I → U: dig – dug, stick – stuck.", ["sell", "tell", "win", "sit", "hold", "dig", "stick", "stand", "understand", "find", "get"]],
+  ["Úplne vlastné", "Pri týchto musíš byť opatrná, musia sa naučiť naspamäť.", ["be", "go", "can", "lie"]],
+];
+
 function learnMenu() {
   const d = render(`
-    <h2>🃏 Učenie s kartami</h2>
-    <p class="muted">Zakliknite, ktoré desiatky slovies sa chceš učiť. Pozri si slovo, hádaj 2. a 3. tvar, otoč kartu a ohodnoť sa.</p>
+    <h2>🧠 Učenie</h2>
+    <p class="muted">Bez známok, bez času a bez tlaku. Tu sa slovesá opakujú a pamätajú. Test si môžeš skúsiť, keď budeš pripravená.</p>
+    <div class="card center">
+      <button class="btn alt" id="tricks">🧠 Triky podľa skupín</button>
+      <div class="muted" style="margin-top:6px;font-size:.9rem">Slovesá zoradené podľa vzoru, ľahšie sa pamätajú.</div>
+    </div>
+    <p><b>Zakliknite, ktoré desiatky slovies sa chceš učiť:</b></p>
     <div id="picker"></div>
-    <button class="btn" id="go">Začať učenie</button>
+    <div class="row">
+      <button class="btn" id="fill">✏️ Doplňovanie</button>
+      <button class="btn ghost" id="cards">🃏 Karty</button>
+    </div>
+    <p class="muted" style="margin-top:12px">✏️ Doplňovanie: vidíš preklad a dopĺňaš tri tvary, niektoré písmená sú už vyplnené a nápovedy môžeš použiť, kedy chceš.<br>🃏 Karty: pozrieš si slovo a otočíš kartu.</p>
   `, home);
   const get = rangePicker(d.querySelector("#picker"));
-  d.querySelector("#go").onclick = () => { const v = get(); if (!v.length) return alert("Zakliknite aspoň jednu desiatku."); cards(v); };
+  const go = fn => () => { const v = get(); if (!v.length) return alert("Zakliknite aspoň jednu desiatku."); fn(v); };
+  d.querySelector("#fill").onclick = go(practice);
+  d.querySelector("#cards").onclick = go(cards);
+  d.querySelector("#tricks").onclick = tricksView;
 }
+
+function tricksView() {
+  const d = render(`
+    <h2>🧠 Triky podľa skupín</h2>
+    <p class="muted">Keď sa naučíš vzor, nemusíš si pamätať každé sloveso zvlášť.</p>
+    ${GROUPS.map(([title, text, bases]) => `<div class="card"><h3 style="margin:0 0 6px">${title}</h3><div>${text}</div>
+      <div class="chips">${bases.filter(b => byBase[b]).map(b => { const v = byBase[b]; return `<span class="chip"><b>${v.base}</b> – ${showForm(v.past)} – ${showForm(v.pp)} <button class="spk" data-w="${v.past}">🔊</button></span>`; }).join("")}</div></div>`).join("")}`, learnMenu);
+  d.querySelectorAll(".spk").forEach(b => b.onclick = () => say(b.dataset.w));
+}
+
+// Doplňovanie: preklad + tri políčka s napovedanými písmenami, bez skóre a bez času
+function initReveal(word, frac) {
+  const rev = new Set(), hidden = []; let start = true;
+  [...word].forEach((ch, i) => { if (ch === " ") start = true; else if (start) { rev.add(i); start = false; } else hidden.push(i); });
+  shuffle(hidden).slice(0, Math.round(hidden.length * frac)).forEach(i => rev.add(i));
+  return rev;
+}
+function maskText(word, rev) { return [...word].map((ch, i) => ch === " " ? " " : rev.has(i) ? ch : "_").join(" "); }
+
+function practice(verbs) {
+  const queue = shuffle(verbs), total = verbs.length, extra = {}; let done = 0;
+  const next = () => {
+    if (!queue.length) {
+      markDay(); save();
+      const d = render(`<div class="card center"><div class="big">🎉 Super!</div>
+        <p>Prešla si všetkých ${total} slovies. Opakovanie je najlepší spôsob, ako si ich zapamätať.</p>
+        <p><button class="btn" id="again">Ešte raz</button></p>
+        <p><button class="btn alt" id="t">Skúsiť test z týchto slovies</button></p>
+        <p><button class="btn ghost" id="h">Domov</button></p></div>`);
+      d.querySelector("#again").onclick = () => practice(verbs);
+      d.querySelector("#t").onclick = () => startTest(verbs, 15, "Test po učení");
+      d.querySelector("#h").onclick = home;
+      return;
+    }
+    const v = queue[0];
+    const p = store.v[v.base], box = p ? p.box : 0;
+    const frac = extra[v.base] !== undefined ? extra[v.base] : (box >= 4 ? 0 : box >= 2 ? 0.25 : 0.5);
+    const fields = [["základný tvar", v.base], ["2. tvar (minulý čas)", v.past], ["3. tvar (príčastie)", v.pp]]
+      .map(([label, form]) => ({ label, form, word: alts(form)[0], locked: false }));
+    fields.forEach(f => f.rev = initReveal(f.word, frac));
+    let revealed = false, solved = false;
+
+    const d = render(`
+      <div class="progress"><i style="width:${done / total * 100}%"></i></div>
+      <div class="card center">
+        <div class="muted">Doplň tri tvary slovesa</div>
+        <div class="big" style="margin:4px 0 6px">${v.sk}</div>
+        ${fields.map((f, k) => `<div class="fld"><label>${f.label}</label><div class="mask" id="mk${k}"></div>
+          <input type="text" id="in${k}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="napíš celé slovo"></div>`).join("")}
+        <div class="hint" id="msg"></div>
+        <div class="row" style="margin-bottom:10px"><button class="btn" id="chk">Skontrolovať</button><button class="btn ghost" id="help">💡 Pomôž mi</button></div>
+        <div class="row"><button class="btn ghost" id="trk">🧠 Trik</button><button class="btn ghost" id="show">👀 Ukáž riešenie</button></div>
+        <div id="tip"></div>
+        <p><button class="btn alt" id="nx" style="display:none">Ďalej ▶</button></p>
+      </div>`, home);
+    const msg = d.querySelector("#msg");
+    const draw = () => fields.forEach((f, k) => { d.querySelector("#mk" + k).textContent = f.locked ? showForm(f.form) : maskText(f.word, f.rev); });
+    draw();
+    d.querySelector("#in0").focus();
+    const showTip = () => { d.querySelector("#tip").innerHTML = TIPS[v.base] ? `<div class="tip">🧠 <b>Trik:</b> ${TIPS[v.base]}</div>` : ""; };
+    const finishCard = text => {
+      msg.textContent = text; showTip();
+      d.querySelector("#nx").style.display = ""; d.querySelector("#nx").focus();
+      d.querySelector("#chk").style.display = "none"; d.querySelector("#help").style.display = "none"; d.querySelector("#show").style.display = "none";
+      say(v.past);
+    };
+    const check = () => {
+      let wrong = 0;
+      fields.forEach((f, k) => {
+        if (f.locked) return;
+        const inp = d.querySelector("#in" + k), val = inp.value.trim();
+        if (!val) { wrong++; return; }
+        if (accepts(val, f.form)) { f.locked = true; inp.value = showForm(f.form); inp.disabled = true; inp.className = "ok"; }
+        else { wrong++; inp.className = "try"; }
+      });
+      draw();
+      if (!wrong) { solved = true; finishCard("Super! 🌟 Zvládla si to."); }
+      else msg.textContent = "Skoro! Skús ešte raz alebo si vypýtaj nápovedu 💡";
+    };
+    d.querySelector("#chk").onclick = check;
+    fields.forEach((f, k) => d.querySelector("#in" + k).onkeydown = e => {
+      if (e.key !== "Enter") return;
+      const nxt = d.querySelector("#in" + (k + 1)); if (nxt && !nxt.disabled) nxt.focus(); else check();
+    });
+    d.querySelector("#help").onclick = () => {
+      let any = false;
+      fields.forEach(f => {
+        if (f.locked) return;
+        const hid = [...f.word].map((ch, i) => i).filter(i => f.word[i] !== " " && !f.rev.has(i));
+        if (hid.length) { f.rev.add(hid[Math.floor(Math.random() * hid.length)]); any = true; }
+      });
+      draw();
+      msg.textContent = any ? "Pridali sme ti jedno písmeno ku každému slovu." : "Už vidíš všetky písmená, skús ich napísať celé.";
+    };
+    d.querySelector("#trk").onclick = showTip;
+    d.querySelector("#show").onclick = () => {
+      revealed = true;
+      fields.forEach((f, k) => { f.locked = true; const inp = d.querySelector("#in" + k); inp.value = showForm(f.form); inp.disabled = true; });
+      draw();
+      finishCard("Nevadí, pozri si to a skús si to zapamätať. Ku slovu sa ešte vrátime 😊");
+    };
+    d.querySelector("#nx").onclick = () => {
+      if (revealed) { extra[v.base] = Math.min(0.8, (extra[v.base] !== undefined ? extra[v.base] : frac) + 0.25); queue.push(queue.shift()); }
+      else { queue.shift(); done++; }
+      next();
+    };
+  };
+  next();
+}
+
+// ================= KARTY =================
 function cards(verbs) {
   const queue = shuffle(verbs); const total = queue.length; let done = 0, known = 0, again = 0;
   const next = () => {
@@ -365,7 +601,7 @@ function cards(verbs) {
       const d = render(`<div class="card center"><div class="big">🎉 Hotovo!</div>
         <p>Vedela si <b>${known}</b> z ${total} slovies na prvý pokus${again ? `, ${again}× si si potrebovala kartu zopakovať` : ""}.</p>
         <button class="btn" id="t">Skúsiť test z týchto slovies</button> <button class="btn ghost" id="h">Domov</button></div>`);
-      d.querySelector("#t").onclick = () => startTest(verbs, Math.min(10, verbs.length), "Test po kartách");
+      d.querySelector("#t").onclick = () => startTest(verbs, 15, "Test po kartách");
       d.querySelector("#h").onclick = home;
       return;
     }
@@ -387,11 +623,12 @@ function cards(verbs) {
         <div class="forms"><div><small>základný</small><b>${v.base}</b></div>
         <div><small>2. tvar (minulý)</small><b>${showForm(v.past)}</b> <button class="spk" data-w="${v.past}">🔊</button></div>
         <div><small>3. tvar (príčastie)</small><b>${showForm(v.pp)}</b> <button class="spk" data-w="${v.pp}">🔊</button></div></div>
+        ${TIPS[v.base] ? `<div class="tip">🧠 <b>Trik:</b> ${TIPS[v.base]}</div>` : ""}
         <div class="row" style="margin-top:16px"><button class="btn good" id="y">Vedela som ✅</button><button class="btn bad" id="n">Ešte nie 🔁</button></div>`;
       d.querySelectorAll(".spk[data-w]").forEach(b => b.onclick = () => say(b.dataset.w));
       say(v.past);
-      d.querySelector("#y").onclick = () => { const first = !v._again; if (first) known++; record(v.base, true, 3); queue.shift(); done++; delete v._again; next(); };
-      d.querySelector("#n").onclick = () => { record(v.base, false); v._again = true; again++; queue.push(queue.shift()); next(); };
+      d.querySelector("#y").onclick = () => { const first = !v._again; if (first) known++; queue.shift(); done++; delete v._again; next(); };
+      d.querySelector("#n").onclick = () => { v._again = true; again++; queue.push(queue.shift()); next(); };
     };
   };
   next();
@@ -584,13 +821,21 @@ function historyView(backFn) {
     ${topErr.length ? `<div class="card"><h3 style="margin-top:0">Najčastejšie chyby zo všetkých testov</h3>
       ${topErr.map(([b, c]) => `<div class="mistake"><b>${form(b)}</b> <span class="muted">(${byBase[b] ? byBase[b].sk : ""}) · ${c}× chyba</span></div>`).join("")}</div>` : ""}
     ${n ? tests.map(t => `<details class="card">
-        <summary>${when(t)} · ${t.title}<br>
-          <span class="g${t.grade}">známka ${t.grade}</span> · ${t.correct}/${t.total} správne (${t.pct} %)${t.hints ? ` · 💡 ${t.hints}× nápoveda` : ""}</summary>
-        ${t.items ? t.items.map(it => it.ok
-          ? `<div class="okline"><b>${it.base}</b> ✓ <span class="muted">(${TYPE[it.type]}${it.hint ? ", s nápovedou" : ""})</span></div>`
-          : `<div class="mistake"><b>${it.base}</b> <span class="muted">(${TYPE[it.type]}${it.hint ? ", s nápovedou" : ""})</span><br>
-              <span class="muted">odpoveď:</span> ${it.given}<br><span class="muted">správne:</span> <b>${form(it.base)}</b></div>`).join("")
-          : (t.mistakes && t.mistakes.length ? t.mistakes.map(b => `<div class="mistake"><b>${form(b)}</b></div>`).join("") : "<span class='muted'>Bez chýb.</span>")}
+        <summary>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <div>📅 ${when(t)}<br><span class="muted" style="font-weight:normal;font-size:.9rem">${t.title}${t.hints ? ` · 💡 ${t.hints}× nápoveda` : ""}</span></div>
+            <div style="text-align:right;white-space:nowrap"><span class="big g${t.grade}" style="font-size:1.6rem">${t.pct} %</span><br>
+              <span class="muted" style="font-weight:normal;font-size:.85rem">${t.correct}/${t.total} · známka ${t.grade} ▾</span></div>
+          </div>
+        </summary>
+        ${(() => {
+          const items = t.items || [], bad = items.filter(it => !it.ok), good = items.filter(it => it.ok);
+          const hintTag = it => it.hint ? ", s nápovedou" : "";
+          if (!t.items) return t.mistakes && t.mistakes.length ? `<h4 style="margin:6px 0">Zle (${t.mistakes.length})</h4>` + t.mistakes.map(b => `<div class="mistake"><b>${form(b)}</b></div>`).join("") : "<span class='muted'>Bez chýb.</span>";
+          return (bad.length ? `<h4 style="margin:6px 0">❌ Zle (${bad.length})</h4>` + bad.map(it => `<div class="mistake"><b>${it.base}</b> – ${byBase[it.base] ? byBase[it.base].sk : ""} <span class="muted">(${TYPE[it.type]}${hintTag(it)})</span><br>
+              <span class="muted">odpoveď:</span> ${it.given}<br><span class="muted">správne:</span> <b>${form(it.base)}</b></div>`).join("") : `<div class="okline">Žiadna chyba! 🌟</div>`)
+            + (good.length ? `<h4 style="margin:12px 0 6px">✅ Správne (${good.length})</h4>` + good.map(it => `<div class="okline"><b>${it.base}</b> <span class="muted">(${TYPE[it.type]}${hintTag(it)})</span></div>`).join("") : "");
+        })()}
       </details>`).join("") : `<div class="card center muted">Zatiaľ žiadny test.</div>`}
     <button class="btn ghost" id="exp">Stiahnuť históriu (JSON)</button>`, backFn);
   d.querySelector("#exp").onclick = () => {
