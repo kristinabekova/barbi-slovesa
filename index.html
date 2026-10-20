@@ -307,7 +307,7 @@ function say(text) {
 function grade(pct) { return pct >= 90 ? 1 : pct >= 75 ? 2 : pct >= 50 ? 3 : pct >= 30 ? 4 : 5; }
 const GRADE_MSG = { 1: "Výborne! 🏆", 2: "Chválitebne, tak ďalej! 👏", 3: "Dobre, ešte to chce trochu cvičenia 💪", 4: "Treba sa viac učiť – pozri si chyby nižšie 📚", 5: "Nevadí! Zopakuj si karty a skús znova 🌱" };
 const fmtDate = iso => { const d = new Date(iso); return d.toLocaleDateString("sk-SK", { day: "numeric", month: "numeric" }); };
-function back(fn, label = "← Späť") { const b = document.createElement("button"); b.className = "back"; b.textContent = label; b.onclick = fn; return b; }
+function back(fn, label = "← Späť") { const b = document.createElement("button"); b.className = "back nav-back-unified"; b.textContent = "← Späť"; b.onclick = fn; return b; }
 function render(html, backFn) {
   $app.innerHTML = "";
   if (backFn) $app.appendChild(back(backFn));
