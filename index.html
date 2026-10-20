@@ -103,7 +103,7 @@
   details.card[open] summary { margin-bottom: 8px; }
   .setrow { padding: 10px 0; border-bottom: 1px solid var(--line); }
   .setrow:last-child { border: 0; }
-</style>
+.nav-back-unified{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;background:#fff!important;color:#7442d9!important;border:1px solid #d6bfff!important;border-radius:16px!important;padding:11px 18px!important;font:700 16px system-ui,-apple-system,sans-serif!important;text-decoration:none!important;box-shadow:0 3px 12px #51337816!important;cursor:pointer!important;white-space:nowrap!important;min-height:44px!important}.nav-back-unified:hover{background:#f8f3ff!important}.nav-back-unified:focus-visible{outline:3px solid #f5b400!important;outline-offset:2px!important}</style>
 <style id="language-picker-style">
 #language-picker{position:fixed;inset:0;z-index:9999;overflow:auto;background:linear-gradient(155deg,#fdeaf6,#e7e0ff);display:flex;justify-content:center;align-items:center;padding:20px;font-family:"Trebuchet MS",system-ui,sans-serif;color:#33274a}
 #language-picker[hidden]{display:none}#language-picker .language-inner{width:min(680px,100%);text-align:center}#language-picker h2{font-size:2.2rem;color:#7c4dff;margin:12px 0}#language-picker .language-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:25px}#language-picker .language-card{border:0;border-radius:24px;padding:30px 12px;background:white;box-shadow:0 6px 22px #0002;cursor:pointer;font:inherit;color:#33274a;text-decoration:none;display:flex;flex-direction:column;gap:12px;align-items:center}#language-picker .language-card strong{font-size:1.3rem}#language-picker .language-card span{font-size:3rem}#language-picker .language-card small{color:#7a6f90}#language-picker .language-card:hover{transform:translateY(-3px)}@media(max-width:440px){#language-picker .language-grid{gap:10px}#language-picker .language-card{padding:22px 8px}}
@@ -114,9 +114,8 @@
 
 <header>
   <h1 id="logo">🦄 Barbi učenie</h1>
-  <div style="display:flex;gap:10px;align-items:center"><button id="language-home" type="button" style="background:white;color:#7044d9;padding:9px 13px;border-radius:999px;font-weight:bold">🌍 Výber jazyka</button><div id="streak"></div></div>
+  <div style="display:flex;gap:10px;align-items:center"><button id="language-home" class="nav-back-unified" type="button" title="Späť na výber jazykov">← Späť</button><div id="streak"></div></div>
 </header>
-<div id="english-return" style="max-width:980px;margin:12px auto;padding:0 12px"><button type="button" onclick="document.getElementById('language-picker').hidden=false" style="background:#fff;color:#7044d9;border:1px solid #d6bfff;padding:12px 20px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer">← Hlavné menu · Výber jazyka</button></div>
 <main id="app"></main>
 
 <script>
